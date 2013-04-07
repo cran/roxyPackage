@@ -42,17 +42,19 @@
   \item{actions}{Character vector, must contain at least
   one of the following values: \describe{
   \item{"roxy"}{Roxygenize the docs} \item{"cite"}{Update
-  CITATION file} \item{"license"}{Update LICENSE file}
-  \item{"check"}{Do a full package check, calling \code{R
-  CMD check}} \item{"package"}{Build & install the package,
-  update source repository, calling \code{R CMD build} and
-  \code{R CMD INSTALL}} \item{"cl2news"}{Try to convert a
-  ChangeLog file into an NEWS.Rd file}
-  \item{"news2rss"}{Try to convert \code{inst/NEWS.Rd} into
-  an RSS feed. You must also set \code{URL} accordingly.}
-  \item{"doc"}{Update PDF documentation and vignette (if
-  present), \code{R CMD Rd2pdf} (or \code{R CMD Rd2dvi} for
-  R < 2.15)} \item{"html"}{Update HTML index files}
+  CITATION file} \item{"license"}{Update LICENSE.txt file;
+  it's not called LICENSE to prevent an automatic
+  installation} \item{"check"}{Do a full package check,
+  calling \code{R CMD check}} \item{"package"}{Build &
+  install the package, update source repository, calling
+  \code{R CMD build} and \code{R CMD INSTALL}}
+  \item{"cl2news"}{Try to convert a ChangeLog file into an
+  NEWS.Rd file} \item{"news2rss"}{Try to convert
+  \code{inst/NEWS.Rd} into an RSS feed. You must also set
+  \code{URL} accordingly.} \item{"doc"}{Update PDF
+  documentation and vignette (if present), \code{R CMD
+  Rd2pdf} (or \code{R CMD Rd2dvi} for R < 2.15)}
+  \item{"html"}{Update HTML index files}
   \item{"win"}{Update the Windows binary package}
   \item{"macosx"}{Update the Mac OS X binary package}
   \item{"log"}{Generate initial ChangeLog or update a
@@ -161,6 +163,13 @@
   produce usable packages if it contains code in other
   languages like C++.
 }
+\section{Sandboxing}{
+  If you want to check out the effects of roxy.package()
+  without touching you actual package sources, try
+  \code{\link[roxyPackage:sandbox]{sandbox}} to set up a
+  safe testing environment.
+}
+
 \section{Repository layout}{
   The repository will have this directory structure, that
   is, below the defined \code{repo.root}:
@@ -265,5 +274,9 @@ roxy.package(pck.source.dir="~/my_R_stuff/SquareTheCircle",
 \references{
   [1]
   \url{http://cran.r-project.org/web/packages/roxygen2/}
+}
+\seealso{
+  \code{\link[roxyPackage:sandbox]{sandbox}} to run
+  roxy.package() in a sandbox.
 }
 

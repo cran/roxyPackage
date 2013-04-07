@@ -26,18 +26,31 @@ pckg.dscrptn <- data.frame(
 .roxyPackage.env <- new.env()
 
 # internal helper functions to get/set values in that environment
-get.roxyEnv <- function(name="roxygenVersion"){
-	result <- list()
-	for(x in name){
-		result[[x]] <- get(x, envir=.roxyPackage.env)
+get.roxyEnv <- function(name=NULL){
+	if(is.null(name)){
+		# if no name was specified, return the whole environment as a list
+		result <- as.list(.roxyPackage.env)
+	} else {
+		result <- get(name, envir=.roxyPackage.env)
 	}
 	return(result)
 }
 set.roxyEnv <- function(name="roxygenVersion", value=2){
 	assign(name, value, envir=.roxyPackage.env)
 }
+
 # set default version of roxygen to use
-set.roxyEnv()
+set.roxyEnv(name="roxygenVersion", value=2)
+
+
+## wrapper for paste0() needed?
+if(isTRUE(R_system_version(getRversion()) < 2.15)){
+	# if this is an older R version, we need a wrapper function for paste0()
+	# which was introduced with R 2.15 as a more efficient shortcut to paste(..., sep="")
+	paste0 <- function(..., collapse=NULL){
+		return(paste(..., sep="", collapse=collapse))
+	}
+} else {}
 
 
 ## function getRvers()
@@ -46,9 +59,9 @@ set.roxyEnv()
 getRvers <- function(R.homes=R.home(), win=FALSE){
 	R.bin <- file.path(R.homes, "bin", "R")
 	if(isUNIX()){
-		R.Version.full <- system(paste(R.bin, " --version", sep=""), intern=TRUE)
+		R.Version.full <- system(paste0(R.bin, " --version"), intern=TRUE)
 	} else {
-		R.Version.full <- shell(paste(R.bin, " --version", sep=""), translate=TRUE, intern=TRUE)
+		R.Version.full <- shell(paste0(R.bin, " --version"), translate=TRUE, intern=TRUE)
 	}
 	R.Version.full <- R.Version.full[grep("R version ([[:digit:]]).([[:digit:]])", R.Version.full)]
 	R.Version.full <- gsub("R version ([[:digit:]]+).([[:digit:]]+)([.]?)([[:digit:]]+)(.*)", "\\1.\\2\\3\\4", R.Version.full, perl=TRUE)
@@ -72,11 +85,22 @@ listRDirs <- function(path, full.path=TRUE){
 	all.dirs <- dir(path, full.names=FALSE, recursive=FALSE)
 	R.dirs <- all.dirs[grepl("^([[:digit:]]+).([[:digit:]]+)$", all.dirs)]
 	if(isTRUE(full.path)){
-		return(file.path(paste(add.file.prefix, path, collapse="", sep=""), R.dirs))
+		return(file.path(paste0(add.file.prefix, path, collapse=""), R.dirs))
 	} else {
 		return(R.dirs)
 	}
 } ## end function listRDirs()
+
+
+## function roxyPackage.lib.dir()
+roxyPackage.lib.dir <- function(){
+	# find.package() was introduced with R 2.13, need version check here
+	if(isTRUE(R_system_version(getRvers()) < "2.13")){
+		return(.find.package("roxyPackage"))
+	} else {
+		return(find.package("roxyPackage"))
+	}
+} ## end function roxyPackage.lib.dir()
 
 
 ## function filter.repo.packages()
@@ -137,8 +161,8 @@ get.authors <- function(description, maintainer=TRUE, contributor=FALSE){
 	got.ctb.clean <- gsub("<([^@]*)@([^>]*)>", "\\\\email{\\1@@\\2}", gsub("\n[[:space:]]*", "\n#' ", got.ctb))
 	# append contributors
 	if(isTRUE(contributor) && got.ctb != ""){
-		got.aut.clean <- paste(got.aut.clean, ", with contributions from ",
-			gsub("<([^@]*)@([^>]*)>", "\\\\email{\\1@@\\2}", gsub("\n[[:space:]]*", "\n#'\t\t", got.ctb)), sep="")
+		got.aut.clean <- paste0(got.aut.clean, ", with contributions from ",
+			gsub("<([^@]*)@([^>]*)>", "\\\\email{\\1@@\\2}", gsub("\n[[:space:]]*", "\n#'\t\t", got.ctb)))
 	} else {}
 	gotAuthors <- list(aut=got.aut, aut.clean=got.aut.clean, cre=got.cre, cre.clean=got.cre.clean, ctb=got.ctb, ctb.clean=got.ctb.clean)
 	return(gotAuthors)
@@ -148,18 +172,18 @@ get.authors <- function(description, maintainer=TRUE, contributor=FALSE){
 # extracts fields from description, including checks
 # if "field" is a vector, they are tested in order, befor an error is returned
 getDescField <- function(desc, field, stopOnErr=TRUE){
-	valid.fields <- field %in% names(desc)
+	valid.fields <- field %in% colnames(desc)
 	if(any(valid.fields)){
 		# give a warning if the first alternative didn't check out
 		if(!isTRUE(valid.fields[1])){
-			warning(paste("field \"", field[1],"\" missing in DESCRIPTION file, used \"", field[valid.fields][1], "\" as fallback!", sep=""), call.=FALSE)
+			warning(paste0("field \"", field[1],"\" missing in DESCRIPTION file, used \"", field[valid.fields][1], "\" as fallback!"), call.=FALSE)
 		} else {}
 		this.field <- desc[,field[valid.fields]][1]
 	} else {
 		this.field <- NULL
 	}
 	if(is.null(this.field) & isTRUE(stopOnErr)){
-		stop(simpleError(paste("fields missing in DESCRIPTION file: \"", paste(field, collapse="\", \""), "\"", sep="")))
+		stop(simpleError(paste0("fields missing in DESCRIPTION file: \"", paste(field, collapse="\", \""), "\"")))
 	} else {}
 	return(as.character(this.field))
 } ## end function getDescField()
@@ -198,16 +222,25 @@ checkLicence <- function(license, logical=TRUE, deb=TRUE){
 	normaLice <- gsub("[[:space:]>=()]", "", tolower(license))
 
 	knownLicenses <- list(
+		agpl="3",
 		apache="2",
-		artistic="",
+		artistic=c("1","2"),
 		bsd="",
 		gfdl=c("1.2","1.3"),
 		lgpl=c("2.1","2","3"),
 		gpl=c("1","2","3")
 	)
 
-	# these licenses are also part of roxyPackage, in the file common-licenses.tar.xz
+	# these licenses are also part of roxyPackage, in the file common-licenses.zip
 	debianLicenses <- list(
+		agpl=c(
+			file="AGPL-3",
+			name="GNU Affero General Public License",
+			version="3"),
+		agpl3=c(
+			file="AGPL-3",
+			name="GNU Affero General Public License",
+			version="3"),
 		apache=c(
 			file="Apache-2.0",
 			name="Apache License",
@@ -217,9 +250,17 @@ checkLicence <- function(license, logical=TRUE, deb=TRUE){
 			name="Apache License",
 			version="2.0"),
 		artistic=c(
-			file="Artistic",
+			file="Artistic-1.0",
 			name="Artistic License",
-			version=NA),
+			version="1.0"),
+		artistic1=c(
+			file="Artistic-1.0",
+			name="Artistic License",
+			version="1.0"),
+		artistic2=c(
+			file="Artistic-2.0",
+			name="Artistic License",
+			version="2.0"),
 		bsd=c(
 			file="BSD",
 			name="BSD License",
@@ -312,7 +353,7 @@ checkLicence <- function(license, logical=TRUE, deb=TRUE){
 		if(isTRUE(logical)){
 			return(FALSE)
 		} else {
-			warning("sorry, didn't recognize license string!")
+			warning("license: sorry, didn't recognize license string!", call.=FALSE)
 			return(licenseString)
 		}
 	}
@@ -335,7 +376,7 @@ copyLicence <- function(license, destFile, overwrite=FALSE){
 		licenseText <- readLines(licenseCon <- unz(cLPath, filename=file.path("common-licenses", licenseInfo[["file"]])))
 		close(licenseCon)
 		writeLines(licenseText, con=destFile)
-		message(paste("license: saved a copy of the ", licenseInfo[["name"]], " as LICENSE", sep=""))
+		message(paste0("license: saved a copy of the ", licenseInfo[["name"]], " as LICENSE"))
 	} else {
 		message(paste("skipping, license file exists:", destFile))
 	}
@@ -355,7 +396,7 @@ file.mv <- function(from, to, overwrite=recursive, recursive=FALSE){
 createMissingDir <- function(dirPath, action="files"){
 	if(!file_test("-d", dirPath)){
 		stopifnot(dir.create(dirPath, recursive=TRUE))
-		message(paste(action, ": created ", dirPath, ".", sep=""))
+		message(paste0(action, ": created ", dirPath, "."))
 	} else {}
 	return(invisible(NULL))
 } ## end function createMissingDir()
@@ -387,27 +428,27 @@ mvToArchive <- function(package, repo, archive, versions, type=NA, file=NA, over
 			win.binary=".zip",
 			mac.binary.leopard=".tgz"
 		)
-	pkg.names <- paste(package, "_", versions, file.ending, sep="")
+	pkg.names <- paste0(package, "_", versions, file.ending)
 	sapply(pkg.names, function(this.package){
 		pkg.from <- file.path(repo, this.package)
 		pkg.to <- file.path(archive, this.package)
 		if(!file.exists(pkg.from)){
-			stop(simpleError(paste("file doesn't exist:\n  ", pkg.from, sep="")))
+			stop(simpleError(paste0("file doesn't exist:\n  ", pkg.from)))
 		} else {}
 		# don't archive, just remove files
 		if(isTRUE(justDelete)){
 			if(isTRUE(reallyDoIt)){
-				message(paste("archive: deleting file ", pkg.from, sep=""))
+				message(paste0("archive: deleting file ", pkg.from))
 				removeIfExists(pkg.from)
 			} else {
-				message(paste("archive: deleting file ", pkg.from, " (NOT RUN!)", sep=""))
+				message(paste0("archive: deleting file ", pkg.from, " (NOT RUN!)"))
 			}
 		} else {
 			if(isTRUE(reallyDoIt)){
-				message(paste("archive: moving ", pkg.from, " to ", pkg.to, sep=""))
+				message(paste0("archive: moving ", pkg.from, " to ", pkg.to))
 				file.mv(from=pkg.from, to=pkg.to, overwrite=overwrite)
 			} else {
-				message(paste("archive: moving ", pkg.from, " to ", pkg.to, " (NOT RUN!)", sep=""))
+				message(paste0("archive: moving ", pkg.from, " to ", pkg.to, " (NOT RUN!)"))
 			}
 		}
 	})
@@ -422,3 +463,25 @@ trim <- function(char){
 	char <- gsub("[[:space:]]*$", "", char)
 	return(char)
 } ## end function trim()
+
+
+## function normalizePathByOS()
+# path: the root path to be normalized
+# unix.OS: logical value to set the OS
+# filePrefix: if TRUE, file:/// is prefixed
+normalizePathByOS <- function(path, is.unix=isUNIX(), mustWork=FALSE, filePrefix=FALSE){
+	# normalize a given root path
+	# this may give bogus results on windows, so we'll encapsulate
+	# it in shortPathName(), which is not available on all OSs
+	if(isTRUE(is.unix)){
+		result <- normalizePath(path, mustWork=mustWork)
+		slashes <- "//"
+	} else {
+		result <- shortPathName(normalizePath(path, mustWork=mustWork))
+		slashes <- "///"
+	}
+	if(isTRUE(filePrefix) && !grepl("^file://", result)){
+		result <- paste0("file:", slashes, result)
+	} else {}
+	return(result)
+} ## end function normalizePathByOS()

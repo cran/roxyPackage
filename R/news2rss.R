@@ -45,7 +45,7 @@ news2rss <- function(news, rss=NULL, html=NULL, encoding="UTF-8",
 			missing.info <- FALSE
 		}
 		if(isTRUE(missing.info)){
-			stop(simpleError(paste("news: missing info on RSS channel: '", need.info, "', no RSS feed generated!", sep="")))
+			stop(simpleError(paste0("news: missing info on RSS channel: '", need.info, "', no RSS feed generated!")))
 		} else {}
 	}
 
@@ -91,8 +91,8 @@ news2rss <- function(news, rss=NULL, html=NULL, encoding="UTF-8",
 		# <meta> and <link> probably are also not in XML format
 		for (this.tag in c("link", "meta")){
 			html.tags <- gsub(
-				paste("^<", this.tag, " ([^>]+)([^/])>", sep=""),
-				paste("<", this.tag, " \\1\\2 />", sep=""),
+				paste0("^<", this.tag, " ([^>]+)([^/])>"),
+				paste0("<", this.tag, " \\1\\2 />"),
 				html.tags,
 				ignore.case=TRUE, perl=TRUE)
 		}
@@ -146,8 +146,8 @@ news2rss <- function(news, rss=NULL, html=NULL, encoding="UTF-8",
 
 		xml.channel.title <- XiMpLe::XMLNode("title", channel[["title"]])
 		xml.channel.link <- XiMpLe::XMLNode("link", channel[["link"]])
-		roxyPackage.version <- read.dcf(file.path(path.package("roxyPackage"), "DESCRIPTION"), fields="Version")
-		xml.channel.generator <- XiMpLe::XMLNode("generator", paste("roxyPackage (", roxyPackage.version, ")", sep=""))
+		roxyPackage.version <- read.dcf(file.path(roxyPackage.lib.dir(), "DESCRIPTION"), fields="Version")
+		xml.channel.generator <- XiMpLe::XMLNode("generator", paste0("roxyPackage (", roxyPackage.version, ")"))
 		xml.channel.desc <- XiMpLe::XMLNode("description", XiMpLe::XMLNode("![CDATA[", channel[["description"]]))
 		xml.channel.lang <- xml.channel.atom <- NULL
 		if("language" %in% names(channel)){
@@ -179,13 +179,13 @@ news2rss <- function(news, rss=NULL, html=NULL, encoding="UTF-8",
 # rss.tree <- xml.channel.items
 		if(!is.null(rss)){
 			cat(pasteXML(rss.tree), file=rss)
-			message(paste("news: updated RSS feed ", rss, sep=""))
+			message(paste0("news: updated RSS feed ", rss))
 			return(invisible(NULL))
 		} else {
 			return(rss.tree)
 		}
 	} else {
-		warning(paste("news: ", news," does not exist, no RSS file created!", sep=""), call.=FALSE)
+		warning(paste0("news: ", news," does not exist, no RSS file created!"), call.=FALSE)
 	}
 	return(invisible(NULL))
 }

@@ -98,7 +98,7 @@ autoLineBreak <- function(text, lineEnd=78, breakAt=c(" "), breakBy="\n"){
 				splittedText[maxBreakPlace] <- breakBy
 				thisPlace <- thisPlace + lineEnd
 			}
-			newText <- paste(splittedText, sep="", collapse="")
+			newText <- paste0(splittedText, collapse="")
 			return(newText)
 		})
 	return(results)
@@ -108,7 +108,7 @@ autoLineBreak <- function(text, lineEnd=78, breakAt=c(" "), breakBy="\n"){
 ## function findItemsInChangeLog()
 # log: character vector, result of readLines() in parseChangeLog()
 findItemsInChangeLog <- function(logLines, item="  -"){
-	itemRegExp <- paste("^", item, sep="")
+	itemRegExp <- paste0("^", item)
 	numLines <- length(logLines)
 
 	newLogLines <- c()
@@ -144,21 +144,20 @@ parseChangeLog <- function(file, head="ChangeLog for package", change="changes i
 
 	# begin the parsing
 	# which package is this?
-	cl.for.package <- cl[grep(paste("^", head, "[[:space:]]+[[:alpha:]]+", sep=""), cl, ignore.case=TRUE)]
+	cl.for.package <- cl[grep(paste0("^", head, "[[:space:]]+[[:alpha:]]+"), cl, ignore.case=TRUE)]
 	if(is.null(cl.for.package) || identical(cl.for.package, "")){
 		stop("log: can't parse the specified ChangeLog, wrong format?")
 	} else {}
-	slot(results, "package") <- gsub(paste("^", head, "[[:space:]]+", sep=""), "", cl.for.package, ignore.case=TRUE)
-	# results[["package"]] <- gsub(paste("^", head, "[[:space:]]+", sep=""), "", cl.for.package, ignore.case=TRUE)
+	slot(results, "package") <- gsub(paste0("^", head, "[[:space:]]+"), "", cl.for.package, ignore.case=TRUE)
 
 	# separate individual entries
-	cl.entries <- c(grep(paste("^", change, "[[:space:]]+[[:alnum:]]+", sep=""), cl, ignore.case=TRUE), last.line + 1)
+	cl.entries <- c(grep(paste0("^", change, "[[:space:]]+[[:alnum:]]+"), cl, ignore.case=TRUE), last.line + 1)
 	entry.idx <- 1
 	while(entry.idx < length(cl.entries)){
 		this.entry <- cl[cl.entries[entry.idx]:(cl.entries[entry.idx+1]-1)]
-		this.entry.version <- gsub(paste("^", change, "[[:space:]]+([[:digit:]]+[.][[:digit:]]+[-]?[[:alnum:]]+)[[:space:]]+[(][[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}[)].*", sep=""),
+		this.entry.version <- gsub(paste0("^", change, "[[:space:]]+([[:digit:]]+[.][[:digit:]]+[-]?[[:alnum:]]+)[[:space:]]+[(][[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}[)].*"),
 			"\\1", this.entry[1], ignore.case=TRUE, perl=TRUE)
-		this.entry.date <- gsub(paste("^", change, "[[:space:]]+[[:digit:]]+[.][[:digit:]]+[-]?[[:alnum:]]+[[:space:]]+[(]([[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2})[)].*", sep=""),
+		this.entry.date <- gsub(paste0("^", change, "[[:space:]]+[[:digit:]]+[.][[:digit:]]+[-]?[[:alnum:]]+[[:space:]]+[(]([[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2})[)].*"),
 			"\\1", this.entry[1], ignore.case=TRUE, perl=TRUE)
 		slot(results, "entries")[[this.entry.version]] <- new("ChangeLog.entry",
 			version=this.entry.version,
@@ -201,26 +200,26 @@ setMethod("pasteChangeLog",
 
 		# are there plain entries?
 		if(length(slot(log, "plain")) > 0){
-			this.entry.plain <- paste(item, " ",
+			this.entry.plain <- paste0(item, " ",
 				autoLineBreak(slot(log, "plain"), lineEnd=lineEnd, breakAt=breakAt, breakBy=breakBy),
-				"\n", collapse="", sep="")
+				"\n", collapse="")
 		} else {
 			this.entry.plain <- ""
 		}
 		# are there sections?
 		if(length(slot(log, "sections")) > 0){
 			this.entry.sections <- paste(sapply(1:length(slot(log, "sections")), function(this.idx){
-					this.sect <- paste(item, " ",
+					this.sect <- paste0(item, " ",
 						autoLineBreak(slot(log, "sections")[[this.idx]], lineEnd=lineEnd, breakAt=breakAt, breakBy=breakBy),
-						"\n", collapse="", sep="")
-					this.sect.name <- paste(names(slot(log, "sections"))[this.idx], ":\n", sep="")
-					this.sect.full <- paste(this.sect.name, this.sect, collapse="", sep="")
+						"\n", collapse="")
+					this.sect.name <- paste0(names(slot(log, "sections"))[this.idx], ":\n")
+					this.sect.full <- paste0(this.sect.name, this.sect, collapse="")
 					return(this.sect.full)
 				}), collapse="")
 		} else {
 			this.entry.sections <- ""
 		}
-		this.entry.full <- paste(this.entry.plain, this.entry.sections, collapse="", sep="")
+		this.entry.full <- paste0(this.entry.plain, this.entry.sections, collapse="")
 		return(this.entry.full)
 })
 
@@ -278,9 +277,9 @@ mergeLists <- function(list1, list2, uniq=TRUE){
 setMethod("pasteChangeLog",
 	signature=signature(log="ChangeLog.entry"),
 	function(log, change="changes in version", item="  -", lineEnd=78, breakAt=c(" "), breakBy="\n    "){
-		entry.head <- paste(change, " ", slot(log, "version"), " (", slot(log, "date"), ")\n", sep="")
+		entry.head <- paste0(change, " ", slot(log, "version"), " (", slot(log, "date"), ")\n")
 		entry.items <- pasteChangeLog(slot(log, "entry"), item=item, lineEnd=lineEnd, breakAt=breakAt, breakBy=breakBy)
-		cl.entries <- paste(entry.head, entry.items, "\n", collapse="", sep="")
+		cl.entries <- paste0(entry.head, entry.items, "\n", collapse="")
 		return(cl.entries)
 })
 
@@ -288,12 +287,12 @@ setMethod("pasteChangeLog",
 setMethod("pasteChangeLog",
 	signature=signature(log="ChangeLog"),
 	function(log, file=NULL, head="ChangeLog for package", change="changes in version", item="  -", lineEnd=78, breakAt=c(" "), breakBy="\n    "){
-		cl.title <- paste(head, " ", slot(log, "package"), "\n\n", sep="")
+		cl.title <- paste0(head, " ", slot(log, "package"), "\n\n")
 		cl.entries <- paste(sapply(slot(log, "entries"), function(this.entry){
 				pasteChangeLog(this.entry, change=change, item=item, lineEnd=lineEnd, breakAt=breakAt, breakBy=breakBy)
 			}), collapse="")
 
-		results <- paste(cl.title, cl.entries, sep="")
+		results <- paste0(cl.title, cl.entries)
 		if(!is.null(file)){
 			cat(results, file=file)
 			return(invisible(NULL))

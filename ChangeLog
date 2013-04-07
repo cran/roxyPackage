@@ -1,5 +1,39 @@
 ChangeLog for package roxyPackage
 
+changes in version 0.03-6 (2013-04-07)
+added:
+  - debianize() now supports both strict package names according to the
+    Debain R Policy as well as package names with a dot, whichever is expected by
+    your r-cran.mk file. Ignoring the policy is the default, as that is the
+    de-facto standard.
+
+changes in version 0.03-5 (2013-03-30)
+fixed:
+  - .find.package() will soon be removed from R, replaced it with
+    find.package() for R >= 2.13
+
+changes in version 0.03-4 (2013-03-12)
+changed:
+  - internally replaced paste(..., sep="") with paste0(...), and added a
+    version dependent wrapper for compatibility with R < 2.15
+added:
+  - AGPL and Artistic License 2.0 have been added to the common licenses
+fixed:
+  - license files are now called LICENSE.txt; this is to prevent their
+    installation, as suggested by 'Writing R Extensions'
+
+changes in version 0.03-3 (2013-02-13)
+added:
+  - extended sandboxing possibilities to archive.packages() and debianize()
+changed:
+  - sandbox() will now remove all paths set if "active" is FALSE
+
+changes in version 0.03-2 (2013-02-11)
+added:
+  - new sandbox feature, see ?sandbox() and ?sandbox.status(). this needs
+    testing, and future releases will get support for this in all relevant
+    functions, not just roxy.package(), as it is now.
+
 changes in version 0.03-1 (2013-01-29)
 changed:
   - split documentation for ChangeLog functions and methods

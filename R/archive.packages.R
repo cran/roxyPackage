@@ -2,9 +2,11 @@
 #' 
 #' Use this function to move older versions of a package to a specified archive directory,
 #' or remove them completely.
+#' 
+#' @note This function responds to \code{\link[roxyPackage:sandbox]{sandbox}}.
 #'
-#' @param repo.root Path to the repository root, i.e., the directory which contains the the \code{src}
-#'		and \code{bin} directories. Usually this path should start with "\code{file://}".
+#' @param repo.root Path to the repository root, i.e., the directory which contains the \code{src}
+#'		and \code{bin} directories. Usually this path should start with "\code{file:///}".
 #' @param to.dir Character string, name of the folder to move the old packages to.
 #' @param keep An integer value defining the maximum nuber of versions to keep. Setting this to 0 will
 #'		completely remove all packages from the repository, which is probably only useful in combination
@@ -19,23 +21,23 @@
 #' @param overwrite Logical, indicated whether existing files in the archive can be overwritten.
 #' @param reallyDoIt Logical, real actions are only taken if set to \code{TRUE}, otherwise the actions
 #'		are only printed.
-#' 
+#' @seealso \code{\link[roxyPackage:sandbox]{sandbox}} to run archive.packages() in a sandbox.
 #' @export
 #' @examples
 #' \dontrun{
 #' # dry run, only prints what would happen, so you can check
 #' # if that's really what you want
-#' archive.packages("file://var/www/repo")
+#' archive.packages("file:///var/www/repo")
 #' 
 #' # after we've confirmed that the right packages will be moved
 #' # and deleted, let's actually commit the changes
-#' archive.packages("file://var/www/repo", reallyDoIt=TRUE)
+#' archive.packages("file:///var/www/repo", reallyDoIt=TRUE)
 #' 
 #' # if we don't want a standard archive, but for instance a parallel
 #' # archive repository, we can have it. let's move all but the latest two
 #' # versions from /var/www/repo to /var/www/archive. to suppress the
 #' # creation of a special archive directory, we set to.dir=""
-#' archive.packages("file://var/www/repo", to.dir="", keep=2,
+#' archive.packages("file:///var/www/repo", to.dir="", keep=2,
 #'   type=c("source", "win.binary", "mac.binary.leopard"),
 #'   archive.root="/var/www/archive", reallyDoIt=TRUE)
 #' }
@@ -49,10 +51,24 @@ archive.packages <- function(repo.root, to.dir="Archive", keep=1, package=NULL, 
 	all.valid.types <- c("source", "win.binary", "mac.binary.leopard")
 	if(any(!type %in% all.valid.types)){
 		stop(simpleError("archive: invalid package type specified!"))
-	} else {} 
+	} else {}
 
-	if(!grepl("^file://", repo.root)){
-		warning("'repo.root' does not start with 'file://', are you sure this is correct?")
+	if(isTRUE(check.sandbox())){
+		message("preparing sandbox...")
+		# prepare folder structure; this will also insure sane values and abort
+		# if locations are invalid. the function returns a list of paths to use
+		## this needs some love...
+		# check for "file://" in this function
+		adjust.paths <- prepare.sandbox.archive(repo.root=repo.root, archive.root=archive.root, to.dir=to.dir)
+		# replace paths with sandbox
+		repo.root <- normalizePathByOS(path=adjust.paths[["repo.root"]], is.unix=isUNIX(), mustWork=TRUE, filePrefix=TRUE)
+		archive.root <- adjust.paths[["archive.root"]]
+		to.dir <- adjust.paths[["to.dir"]]
+		sandbox.status()
+	} else {}
+
+	if(!grepl("^file:///", repo.root)){
+		warning("'repo.root' does not start with 'file:///', are you sure this is correct?")
 	}
 
 	archInRepo <- identical(repo.root, archive.root)
@@ -166,9 +182,9 @@ archive.packages <- function(repo.root, to.dir="Archive", keep=1, package=NULL, 
 							# update PACKAGES
 							if(isTRUE(reallyDoIt)){
 								tools:::write_PACKAGES(dir=gsub("^file:(/)+", "/", this.repo), type=writePCKtype, verbose=FALSE, latestOnly=FALSE)
-								message(paste("archive: updated bin/PACKAGES (", this.type, ")", sep=""))
+								message(paste0("archive: updated bin/PACKAGES (", this.type, ")"))
 							} else {
-								message(paste("archive: updated bin/PACKAGES (", this.type, ") (NOT RUN!)", sep=""))
+								message(paste0("archive: updated bin/PACKAGES (", this.type, ") (NOT RUN!)"))
 							}
 						} else {}
 					}

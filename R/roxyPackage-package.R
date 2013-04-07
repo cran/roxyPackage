@@ -3,8 +3,8 @@
 #' \tabular{ll}{
 #' Package: \tab roxyPackage\cr
 #' Type: \tab Package\cr
-#' Version: \tab 0.03-1\cr
-#' Date: \tab 2013-01-29\cr
+#' Version: \tab 0.03-6\cr
+#' Date: \tab 2013-04-07\cr
 #' Depends: \tab R (>= 2.9.0),methods,roxygen2,tools,XiMpLe (>= 0.03-12)\cr
 #' Encoding: \tab UTF-8\cr
 #' License: \tab GPL (>= 3)\cr

@@ -10,7 +10,8 @@
     actions = c("deb", "bin", "src"),
     overwrite = c("changelog", "control", "copyright", "rules"),
     bin.opts = "-rfakeroot -b -uc", arch = "all",
-    compat = 7, gpg.key = NULL, keep.build = FALSE)
+    compat = 7, gpg.key = NULL, keep.build = FALSE,
+    replace.dots = FALSE)
 }
 \arguments{
   \item{pck.source.dir}{Character string, path pointing to
@@ -96,6 +97,22 @@
   \code{pck.source.dir}, work is done in generated folder
   with a random name. Usually it is removed afterwards,
   unless you set this option to \code{TRUE}.}
+
+  \item{replace.dots}{Logical. The proposed Debian R Policy
+  actually asks to replace all dots in package names by
+  hyphens. However, this is implemented differently in
+  \code{r-cran.mk} and will lead to unbuildable packages.
+  So the default here is to ignore the policy draft and
+  keep dots in package names, as is true for a lot of CRAN
+  packages as well (code is law). In case you run into
+  problems here (symptoms include a failing .deb build
+  because the directory \code{build/<package name>} doesn't
+  exist), try turning this switch. If \code{TRUE} dots will
+  be replaced by hyphens in both source and binary package
+  names. Note that building a package by calling this
+  function should always work, because it will
+  automatically create a symlink in the build directory if
+  needed.}
 }
 \description{
   This function attempts to 'debianize' your R source
@@ -135,7 +152,9 @@
 }
 \note{
   Please note that the package will always be built against
-  the R version installed by your package management!
+  the R version installed by your package management! Also,
+  this function responds to
+  \code{\link[roxyPackage:sandbox]{sandbox}}.
 }
 \section{Building the actual package}{
   If you're running the R session on a Debian based system,
@@ -209,5 +228,9 @@ debianize(
 
   [1] Debian Policy Manual:
   \url{http://www.debian.org/doc/debian-policy}
+}
+\seealso{
+  \code{\link[roxyPackage:sandbox]{sandbox}} to run
+  debianize() in a sandbox.
 }
 

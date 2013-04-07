@@ -50,16 +50,16 @@ cl2news <- function(log, news=NULL, codify=TRUE, overwrite=TRUE){
 		wrote.RD.file <- tryCatch(
 			tools:::news2Rd(file=log, out=tmp.NEWS.Rd, codify=codify),
 				error=function(e){
-					warning(paste("news: could not translate ", log," into NEWS.Rd file!", sep=""), call.=FALSE)
+					warning(paste0("news: could not translate ", log," into NEWS.Rd file!"), call.=FALSE)
 					return(FALSE)
 				}
 		)
 		if(is.null(wrote.RD.file) & !is.null(news)){
 			stopifnot(file.copy(tmp.NEWS.Rd, news, overwrite=overwrite))
-			message(paste("news: updated ", news, " from ChangeLog", sep=""))
+			message(paste0("news: updated ", news, " from ChangeLog"))
 		} else {}
 	} else {
-		warning(paste("news: ", log," does not exist, no NEWS.Rd file created!", sep=""), call.=FALSE)
+		warning(paste0("news: ", log," does not exist, no NEWS.Rd file created!"), call.=FALSE)
 	}
 	return(invisible(NULL))
 }

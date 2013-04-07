@@ -34,9 +34,9 @@ roxy.NEWS2HTML <- function(newsRd, newsHTML, pckg, css, R.version){
 		} else {
 			tools::Rd2HTML(Rd=newsRd, out=newsHTML, package=pckg, stylesheet=css)
 		}
-		message(paste("news: updated ", newsHTML, " from NEWS.Rd", sep=""))
+		message(paste0("news: updated ", newsHTML, " from NEWS.Rd"))
 	} else {
-		warning(paste("news: ", newsRd," does not exist, no NEWS.HTML file created!", sep=""), call.=FALSE)
+		warning(paste0("news: ", newsRd," does not exist, no NEWS.HTML file created!"), call.=FALSE)
 		return(invisible(NULL))
 	}
 } ## end function roxy.NEWS2HTML()
@@ -65,19 +65,19 @@ rx.html.switch <- function(desc, field){
 debRepoInfo <- function(URL, dist, comp, repo, package=NULL, gpg.key=NULL, page.css="web.css",
 	package.full=NULL, repo.path=NULL){
 #, url.deb=NULL, deb.repo=NULL
-	apt.base.txt <- paste(paste(URL, "/deb", sep=""), dist, comp, sep=" ")
+	apt.base.txt <- paste(paste0(URL, "/deb"), dist, comp, sep=" ")
 	apt.types <- c("# for binary packages:\ndeb", "# for source packages:\ndeb-src")
 	stopifnot(!identical(apt.types, character()))
 	apt.full.txt <- paste(paste(apt.types, apt.base.txt, sep=" "), collapse="\n")
 	xml.obj.list <- list(
 			XMLNode("h2", "Install R packages from this Debian repository"),
 			XMLNode("h4", "Configure repository"),
-			XMLNode("p", "Add the repository to your configuration (e.g.,", XMLNode("code", paste("/etc/apt/sources.list.d/", repo, ".list", sep="")), "):"),
-			XMLNode("pre", paste("\n", apt.full.txt, sep=""), attrs=list(class="repo"))
+			XMLNode("p", "Add the repository to your configuration (e.g.,", XMLNode("code", paste0("/etc/apt/sources.list.d/", repo, ".list")), "):"),
+			XMLNode("pre", paste0("\n", apt.full.txt), attrs=list(class="repo"))
 		)
 
 	if(!is.null(gpg.key)){
-		gpg.txt <- paste("wget -q ", URL, "/", gpg.key, ".asc -O- | sudo apt-key add -", sep="")
+		gpg.txt <- paste0("wget -q ", URL, "/", gpg.key, ".asc -O- | sudo apt-key add -")
 		xml.obj.list <- append(xml.obj.list,
 			list(
 				XMLNode("h4", "Add GnuPG key"),
@@ -87,7 +87,7 @@ debRepoInfo <- function(URL, dist, comp, repo, package=NULL, gpg.key=NULL, page.
 	} else {}
 
 	if(!is.null(package)){
-		pkg.txt <- paste("sudo aptitude update\nsudo aptitude install ", package, sep="")
+		pkg.txt <- paste0("sudo aptitude update\nsudo aptitude install ", package)
 		xml.obj.list <- append(xml.obj.list,
 			list(
 				XMLNode("h4", "Install packages"),
@@ -101,7 +101,7 @@ debRepoInfo <- function(URL, dist, comp, repo, package=NULL, gpg.key=NULL, page.
 			list(
 				XMLNode("h3", "Manual download"),
 				XMLNode("p", "In case you'd rather like to download the package manually, here it is:"),
-				XMLNode("ul", XMLNode("li", XMLNode("a", package.full, attrs=list(href=paste(repo.path, "/", package.full, sep="")))))
+				XMLNode("ul", XMLNode("li", XMLNode("a", package.full, attrs=list(href=paste0(repo.path, "/", package.full)))))
 			))
 	} else {}
 
@@ -111,7 +111,7 @@ debRepoInfo <- function(URL, dist, comp, repo, package=NULL, gpg.key=NULL, page.
 	html.page <- XMLTree(
 		XMLNode("html",
 			XMLNode("head",
-				XMLNode("title", paste("Install package ", package, " from Debain repository", sep="")),
+				XMLNode("title", paste0("Install package ", package, " from Debain repository")),
 				XMLNode("link", attrs=list(
 					rel="stylesheet",
 					type="text/css",
@@ -153,7 +153,7 @@ roxy.html <- function(pckg, index=FALSE, css="web.css", R.version=NULL,
 				pckg.name <- this.pckg[,"Package"]
 				pckg.title <- this.pckg[,"Title"]
 				table.row <- XMLNode("tr",
-						XMLNode("td", XMLNode("a", pckg.name, attrs=list(href=paste(redirect, pckg.name, "/index.html", sep="")))),
+						XMLNode("td", XMLNode("a", pckg.name, attrs=list(href=paste0(redirect, pckg.name, "/index.html")))),
 						XMLNode("td", pckg.title),
 						attrs=list(valign="top")
 					)
@@ -165,20 +165,20 @@ roxy.html <- function(pckg, index=FALSE, css="web.css", R.version=NULL,
 	} else {
 		got.fields <- dimnames(pckg)[[2]]
 		pckg.name <- pckg[,"Package"]
-		title <- paste(title, ": ", pckg.name, sep="")
+		title <- paste0(title, ": ", pckg.name)
 
 		# check for RSS
 		if(!is.null(rss.file)){
 			rss.header <- XMLNode("link", attrs=list(
 				rel="alternate",
 				type="application/rss+xml",
-				title=paste("RSS (", title, ")", sep=""),	
+				title=paste0("RSS (", title, ")"),	
 				href=rss.file))
 
 			rss.feed <- XMLNode("a",
 				XMLNode("img", attrs=list(
 						src="../feed-icon-14x14.png",
-						alt=paste("RSS feed for R package ", pckg.name, sep="")
+						alt=paste0("RSS feed for R package ", pckg.name)
 					)),
 				attrs=list(href=rss.file))
 		} else {}
@@ -188,9 +188,9 @@ roxy.html <- function(pckg, index=FALSE, css="web.css", R.version=NULL,
 		pckg.author <- rx.clean(pckg.authors[["aut"]])
 		pckg.maintainer <- rx.clean(pckg.authors[["cre"]], nomail=FALSE, textmail=TRUE)
 
-		page.css <- paste("../", css, sep="")
+		page.css <- paste0("../", css)
 		html.body <- XMLNode("body",
-			XMLNode("h2", paste(pckg.name, ": ", pckg.title, sep="")),
+			XMLNode("h2", paste0(pckg.name, ": ", pckg.title)),
 			XMLNode("p", rx.clean(pckg[,"Description"])),
 			XMLNode("table",
  				rx.tr("Version:", pckg[,"Version"]),
@@ -204,23 +204,23 @@ roxy.html <- function(pckg, index=FALSE, css="web.css", R.version=NULL,
 				rx.html.switch(desc=pckg, field="URL"),
  				if(file_test("-f", cite)){
 					rx.tr("Citation:", XMLNode("a",
-						paste(pckg.name, " citation info", sep=""),
+						paste0(pckg.name, " citation info"),
 						attrs=list(href="citation.html")))},
-				attrs=list(summary=paste("Package ", pckg.name, " summary.", sep=""))),
+				attrs=list(summary=paste0("Package ", pckg.name, " summary."))),
 			XMLNode("h4", "Downloads:"),
 			XMLNode("table",
  				if(!is.null(url.src)){
 					rx.tr("Package source:", XMLNode("a",
 						url.src,
-						attrs=list(href=paste("../../src/contrib/", url.src, sep=""))))},
+						attrs=list(href=paste0("../../src/contrib/", url.src))))},
  				if(!is.null(url.mac)){
 					rx.tr("MacOS X binary:", XMLNode("a",
 						url.mac,
-						attrs=list(href=paste("../../bin/macosx/leopard/contrib/", R.version, "/", url.mac, sep=""))))},
+						attrs=list(href=paste0("../../bin/macosx/leopard/contrib/", R.version, "/", url.mac))))},
  				if(!is.null(url.win)){
 					rx.tr("Windows binary:", XMLNode("a",
 						url.win,
-						attrs=list(href=paste("../../bin/windows/contrib/", R.version, "/", url.win, sep=""))))},
+						attrs=list(href=paste0("../../bin/windows/contrib/", R.version, "/", url.win))))},
 #  				if(!is.null(url.deb) & !is.null(deb.repo)){
 # 					deb.bin.package <- list(XMLNode("a", url.deb, attrs=list(href=paste(deb.repo, "/", url.deb, sep=""))))
 # 					if(!is.null(url.deb.repo)){
@@ -253,7 +253,7 @@ roxy.html <- function(pckg, index=FALSE, css="web.css", R.version=NULL,
 							rss.feed)))
 					} else {}
 				},
-				attrs=list(summary=paste("Package ", pckg.name, " downloads.", sep=""))),
+				attrs=list(summary=paste0("Package ", pckg.name, " downloads."))),
 			attrs=list(lang="en"))
 	}
 
@@ -264,7 +264,7 @@ roxy.html <- function(pckg, index=FALSE, css="web.css", R.version=NULL,
 				XMLNode("link", attrs=list(
 					rel="stylesheet",
 					type="text/css",
-					href=paste(redirect, page.css, sep=""))),
+					href=paste0(redirect, page.css))),
 				XMLNode("meta", attrs=list(
 					"http-equiv"="Content-Type",
 					content="text/html; charset=utf-8")),
@@ -289,12 +289,12 @@ roxy.html <- function(pckg, index=FALSE, css="web.css", R.version=NULL,
 roxy.html.cite <- function(cite.obj, page.css="web.css", package=""){
 	cite.mheader <- attr(cite.obj, "mheader")
 	cite.text <- gsub("&", "&amp;", cite.obj$textVersion)
-	cite.bibtex <- paste(paste("\t\t\t", gsub("&", "&amp;", gsub("^  ", "\t", toBibtex(cite.obj))), sep=""), collapse="\n")
+	cite.bibtex <- paste(paste0("\t\t\t", gsub("&", "&amp;", gsub("^  ", "\t", toBibtex(cite.obj)))), collapse="\n")
 
 	html.page <- XMLTree(
 		XMLNode("html",
 			XMLNode("head",
-				XMLNode("title", paste(package, " citation info", sep="")),
+				XMLNode("title", paste0(package, " citation info")),
 				XMLNode("link", attrs=list(
 					rel="stylesheet",
 					type="text/css",

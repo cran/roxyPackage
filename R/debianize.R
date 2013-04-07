@@ -49,6 +49,7 @@
 #' \code{deb-src http://<URL you uploaded to>/deb <distribution> <component>}
 #'
 #' @note Please note that the package will always be built against the R version installed by your package management!
+#' Also, this function responds to \code{\link[roxyPackage:sandbox]{sandbox}}.
 #'
 #' @param pck.source.dir Character string, path pointing to the root directory of your package sources.
 #' @param repo.root Character string, valid path to a directory where to build/update a local package repository.
@@ -93,6 +94,13 @@
 #'		This key must be available in your keyring. Skipped if \code{NULL}.
 #' @param keep.build Logical. If \code{build.dir} is not \code{pck.source.dir}, work is done in generated folder with a random name. Usually it
 #'		is removed afterwards, unless you set this option to \code{TRUE}.
+#' @param replace.dots Logical. The proposed Debian R Policy actually asks to replace all dots in package names by hyphens. However,
+#'		this is implemented differently in \code{r-cran.mk} and will lead to unbuildable packages. So the default here is to ignore the policy draft and keep dots
+#'		in package names, as is true for a lot of CRAN packages as well (code is law). In case you run into problems here
+#'		(symptoms include a failing .deb build because the directory \code{build/<package name>} doesn't exist), try turning this switch. If \code{TRUE}
+#'		dots will be replaced by hyphens in both source and binary package names. Note that building a package by calling this function should always
+#'		work, because it will automatically create a symlink in the build directory if needed.
+#' @seealso \code{\link[roxyPackage:sandbox]{sandbox}} to run debianize() in a sandbox.
 #' @references
 #' Eddelbuettel, D. & Bates, D. (2003). \emph{Debian R Policy -- Draft Proposal v 0.1.3}.
 #' 	Available from \url{http://lists.debian.org/debian-devel/2003/12/msg02332.html}
@@ -130,7 +138,22 @@ debianize <- function(
 	arch="all",
 	compat=7,
 	gpg.key=NULL,
-	keep.build=FALSE){
+	keep.build=FALSE,
+	replace.dots=FALSE){
+
+	## check for sandboxing
+	if(isTRUE(check.sandbox())){
+		message("preparing sandbox...")
+		# prepare folder structure; this will also insure sane values and abort
+		# if locations are invalid. the function returns a list of paths to use
+		adjust.paths <- prepare.sandbox.deb(
+			pck.source.dir=pck.source.dir,
+			repo.root=repo.root)
+		# replace paths with sandbox
+		pck.source.dir <- adjust.paths[["pck.source.dir"]]
+		repo.root <- adjust.paths[["repo.root"]]
+		sandbox.status()
+	} else {}
 
 	if(any(c("bin","src") %in% actions)){
 		# basic checks
@@ -147,7 +170,7 @@ debianize <- function(
 		buildTools <- Sys.which(neededTools)
 		missingTools <- buildTools %in% ""
 		if(any(missingTools)){
-			stop(simpleError(paste("can't find these tools:\n    '", paste(neededTools[missingTools], collapse="'\n    '"),"'\n  please check your build environment!", sep="")))
+			stop(simpleError(paste0("can't find these tools:\n    '", paste(neededTools[missingTools], collapse="'\n    '"),"'\n  please check your build environment!")))
 		}
 		if(!identical(build.dir, pck.source.dir)){
 			build.dir <- tempfile(tmpdir=build.dir)
@@ -156,13 +179,13 @@ debianize <- function(
 				if(!isTRUE(keep.build)){
 					on.exit(unlink(build.dir, recursive=TRUE))
 				} else {}
-				message(paste("deb: created ", build.dir, ".", sep=""))
+				message(paste0("deb: created ", build.dir, "."))
 			} else {}
 		} else {}
 		# create repo structure
 		repo.all.arch <- c("binary-i386","binary-amd64")
 		repo.deb.path <- file.path(repo.root, "deb")
-		repo.gpg.key.file <- file.path(repo.root, paste(gpg.key, ".asc", sep=""))
+		repo.gpg.key.file <- file.path(repo.root, paste0(gpg.key, ".asc"))
 		repo.arch.rel.paths <- file.path("dists", distribution, component, repo.all.arch)
 		repo.arch.paths <- file.path(repo.deb.path, repo.arch.rel.paths)
 		repo.bin.rel.path <- file.path("dists", distribution, component, "all")
@@ -175,7 +198,7 @@ debianize <- function(
 		for (this.path in c(repo.bin.path, repo.src.pseudo.path, repo.src.real.path, repo.arch.paths)){
 			if(!file_test("-d", this.path)){
 				stopifnot(dir.create(this.path, recursive=TRUE))
-				message(paste("deb: created ", this.path, " (repository).", sep=""))
+				message(paste0("deb: created ", this.path, " (repository)."))
 			} else {}
 		}
 	} else {}
@@ -213,8 +236,12 @@ debianize <- function(
 	deb.file.copyright <- file.path(deb.dir.debian, "copyright")
 	deb.file.rules <- file.path(deb.dir.debian, "rules")
 
-	deb.srcs.name <- gsub("\\.", "-", tolower(paste(pck.package)))
-	deb.pckg.name <- gsub("\\.", "-", tolower(paste("r", origin, pck.package, sep="-")))
+	deb.pckg.name.lower <- tolower(paste("r", origin, pck.package, sep="-"))
+	if(isTRUE(replace.dots)){
+		deb.pckg.name <- deb.srcs.name <- gsub("\\.", "-", deb.pckg.name.lower)
+	} else {
+		deb.pckg.name <- deb.srcs.name <- deb.pckg.name.lower
+	}
 	deb.pckg.vers <- paste(pck.version, revision, sep="-")
 
 	thisYear <- format(Sys.Date(), "%Y")
@@ -234,11 +261,11 @@ debianize <- function(
 		# check for/create directories
 		if(!file_test("-d", deb.dir.source)){
 			stopifnot(dir.create(deb.dir.source, recursive=TRUE))
-			message(paste("deb: created ", deb.dir.source, ".", sep=""))
+			message(paste0("deb: created ", deb.dir.source, "."))
 		} else {}
 		if(!file_test("-f", deb.file.format)){
 			cat("3.0 (quilt)\n", file=deb.file.format)
-			message(paste("deb: created ", deb.file.format, " (set to quilt format).", sep=""))
+			message(paste0("deb: created ", deb.file.format, " (set to quilt format)."))
 		} else {}
 
 		# check missing contents of deb.description and set defaults
@@ -248,12 +275,12 @@ debianize <- function(
 			deb.description <- list()
 		}
 		if(is.null(deb.description[["Build.Depends.Indep"]])){
-			deb.description[["Build.Depends.Indep"]] <- paste("debhelper (>> 4.1.0), r-base-dev (>= ", thisRVers, "), cdbs", sep="")
+			deb.description[["Build.Depends.Indep"]] <- paste0("debhelper (>> 4.1.0), r-base-dev (>= ", thisRVers, "), cdbs")
 		} else {
 			deb.description[["Build.Depends.Indep"]] <- paste(deb.description[["Build.Depends.Indep"]], collapse=", ")
 		}
 		if(is.null(deb.description[["Depends"]])){
-			deb.description[["Depends"]] <- paste("r-base (>= ", thisRVers, ")", sep="")
+			deb.description[["Depends"]] <- paste0("r-base (>= ", thisRVers, ")")
 		} else {
 			deb.description[["Depends"]] <- paste(deb.description[["Depends"]], collapse=", ")
 		}
@@ -271,13 +298,13 @@ debianize <- function(
 		if(!file_test("-f", deb.file.compat) | "compat" %in% overwrite){
 			stopifnot(is.numeric(compat))
 			cat(compat, "\n", file=deb.file.compat)
-			message(paste("deb: created ", deb.file.compat, " (set to level ", compat, ").", sep=""))
+			message(paste0("deb: created ", deb.file.compat, " (set to level ", compat, ")."))
 		} else {}
 
 		## debian/control
 		if(!file_test("-f", deb.file.control) | "control" %in% overwrite){
 			deb.txt.control.src <- data.frame(
-				Source=deb.pckg.name,
+				Source=deb.srcs.name,
 				Section=deb.description[["Section"]],
 				Priority=deb.description[["Priority"]],
 				Maintainer=deb.description[["Maintainer"]],
@@ -291,7 +318,7 @@ debianize <- function(
 				Architecture=arch,
 				Section=deb.description[["Section"]],
 				Depends=deb.description[["Depends"]],
-				Description=paste("GNU R package: ", pck.description, sep=""),
+				Description=paste0("GNU R package: ", pck.description),
 				stringsAsFactors=FALSE)
 
 			# additional valid fields
@@ -315,13 +342,13 @@ debianize <- function(
 		if(!file_test("-f", deb.file.copyright) | "copyright" %in% overwrite){
 			if(checkLicence(pck.license)){
 				licenseInfo <- checkLicence(pck.license, deb=TRUE, logical=FALSE)
-				includeLicense <- paste(pck.package, " Copyright (C) ", thisYear, " ", pck.author.nomail, ", released under the\n",
+				includeLicense <- paste0(pck.package, " Copyright (C) ", thisYear, " ", pck.author.nomail, ", released under the\n",
 				licenseInfo[["name"]],
 				if(!is.na(licenseInfo[["version"]])){
-					paste(" version ", licenseInfo[["version"]], sep="")
+					paste0(" version ", licenseInfo[["version"]])
 				} else {},
 				if(grepl(">", pck.license)){
-					paste(" or (at your option) any later version", sep="")
+					paste0(" or (at your option) any later version")
 				} else {},
 				".\n\n",
 				"This software is distributed in the hope that it will be useful, but\n",
@@ -329,32 +356,31 @@ debianize <- function(
 				"or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
 				"You should have received a copy of the license with your Debian system,\n",
 				"in the file /usr/share/common-licenses/", licenseInfo[["file"]], ", or with the\n",
-				"source package as the file COPYING or LICENSE.\n", sep="")
+				"source package as the file COPYING or LICENSE.\n")
 			} else {
-				includeLicense <- paste(pck.package, " Copyright (C) ", thisYear, " ", pck.author.nomail, ", released under the\n",
+				includeLicense <- paste0(pck.package, " Copyright (C) ", thisYear, " ", pck.author.nomail, ", released under the\n",
 				"terms of the ", pck.license, " license.\n\n",
 				"This software is distributed in the hope that it will be useful, but\n",
 				"WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY\n",
 				"or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
 				"You should have received a copy of the license with the\n",
-				"source package as the file COPYING or LICENSE.\n", sep="")
+				"source package as the file COPYING or LICENSE.\n")
 			}
-			deb.txt.copyright <- paste(
+			deb.txt.copyright <- paste0(
 				if(identical(pck.author, pck.maintainer)){
-					paste("The R library ", pck.package, " was originally  written and is maintained by ", pck.author, ".\n\n", sep="")
+					paste0("The R library ", pck.package, " was originally  written and is maintained by ", pck.author, ".\n\n")
 				} else {
-					paste("The R library ", pck.package, " was originally written by ", pck.author, "\n",
-					"and is maintained by ", pck.maintainer, ".\n\n", sep="")
+					paste0("The R library ", pck.package, " was originally written by ", pck.author, "\n",
+					"and is maintained by ", pck.maintainer, ".\n\n")
 				},
 				"This Debian package was put together ", deb.description[["Maintainer"]], ".\n\n",
 				if("Homepage" %in% deb.description){
-					paste("The sources were downloaded from ", deb.description[["Homepage"]], ".\n\n", sep="")
+					paste0("The sources were downloaded from ", deb.description[["Homepage"]], ".\n\n")
 				} else {},
 				"The package was renamed from its upstream name '", pck.package, "' to\n",
 				"'", deb.pckg.name, "' in harmony with the R packaging policy to indicate\n",
 				"that the package is external to the CRAN or BioC repositories.\n\n",
-				includeLicense,
-				sep="")
+				includeLicense)
 
 			# write the copyright file
 			cat(deb.txt.copyright, file=deb.file.copyright)
@@ -363,20 +389,19 @@ debianize <- function(
 
 		## debian/changelog
 		if(!file_test("-f", deb.file.changelog) | "changelog" %in% overwrite){
-			deb.txt.changelog <- paste(
-				deb.pckg.name, " (", deb.pckg.vers, ") ", distribution, "; urgency=", urgency,"\n\n  * ",
+			deb.txt.changelog <- paste0(
+				deb.srcs.name, " (", deb.pckg.vers, ") ", distribution, "; urgency=", urgency,"\n\n  * ",
 				paste(changelog, collapse="\n  * "),
-				"\n\n -- ", deb.description[["Maintainer"]], "  ", dateRFC2822(), "\n\n",
-				sep="")
+				"\n\n -- ", deb.description[["Maintainer"]], "  ", dateRFC2822(), "\n\n")
 
 			# check if we need to write to the changelog at all
 			if(file_test("-f", deb.file.changelog)){
 				current.changelog <- readLines(deb.file.changelog)
-				alreadyInLog <- any(grepl(paste(deb.pckg.name, " \\(", deb.pckg.vers, "\\)", sep=""), current.changelog))
+				alreadyInLog <- any(grepl(paste0(deb.srcs.name, " \\(", deb.pckg.vers, "\\)"), current.changelog))
 				if(isTRUE(alreadyInLog)){
-					message(paste("there's already a changelog entry for ", deb.pckg.name, " (", deb.pckg.vers, "), skipping!", sep=""))
+					message(paste0("there's already a changelog entry for ", deb.srcs.name, " (", deb.pckg.vers, "), skipping!"))
 				} else {
-					deb.txt.changelog <- paste(deb.txt.changelog, paste(current.changelog, collapse="\n"), "\n", sep="")
+					deb.txt.changelog <- paste0(deb.txt.changelog, paste(current.changelog, collapse="\n"), "\n")
 					# write the changelog file
 					cat(deb.txt.changelog, file=deb.file.changelog)
 				}
@@ -389,7 +414,7 @@ debianize <- function(
 
 		## debian/rules
 		if(!file_test("-f", deb.file.rules) | "rules" %in% overwrite){
-			deb.txt.rules <- paste(
+			deb.txt.rules <- paste0(
 				"#!/usr/bin/make -f\n",
 				"#\t\t\t\t\t\t\t\t-*- makefile -*-\n",
 				"# debian/rules file for the Debian/GNU Linux ", deb.pckg.name," package\n",
@@ -398,8 +423,7 @@ debianize <- function(
 				"include /usr/share/R/debian/r-cran.mk\n\n",
 				"# Require a number equal or superior than the R version the package was built with.\n",
 				"install/$(package)::\n",
-				"\techo \"R:Depends=r-base-core (>= $(shell R --version | head -n1 | perl -ne 'print / +([0-9]\\.[0-9]+\\.[0-9])/')~)\" >> debian/$(package).substvars\n",
-				sep="")
+				"\techo \"R:Depends=r-base-core (>= $(shell R --version | head -n1 | perl -ne 'print / +([0-9]\\.[0-9]+\\.[0-9])/')~)\" >> debian/$(package).substvars\n")
 
 			# write the rules file
 			cat(deb.txt.rules, file=deb.file.rules)
@@ -432,27 +456,35 @@ debianize <- function(
 		setwd(file.path(build.dir, pck.src.folder.name))
 		system("fakeroot debian/rules clean")
 		setwd(file.path(build.dir))
-		orig.file.name <- paste(deb.pckg.name, "_", pck.version, ".orig.tar.gz", sep="")
+		orig.file.name <- paste0(deb.srcs.name, "_", pck.version, ".orig.tar.gz")
 		tar(orig.file.name, files=pck.src.folder.name, tar=buildTools[["tar"]],
-			compression="gzip", extra_flags=paste("-h --exclude=", pck.src.folder.name, "/debian --exclude=*\\~ --exclude-vcs", sep=""))
-		system(paste(buildTools[["dpkg-source"]], " -b ", pck.src.folder.name, sep=""))
+			compression="gzip", extra_flags=paste0("-h --exclude=", pck.src.folder.name, "/debian --exclude=*\\~ --exclude-vcs"))
+		system(paste0(buildTools[["dpkg-source"]], " -b ", pck.src.folder.name))
 		src.files.to.move <- list.files(pattern="*.dsc$|*.debian.tar.gz$|*.orig.tar.gz$")
 		file.copy(src.files.to.move, file.path(repo.src.real.path, src.files.to.move), overwrite=TRUE)
 		message("deb: copied *.dsc, *.orig.tar.gz and *.debian.tar.gz files to debian source repository.")
 		# update sources information; paths must be relative to the debian repo root
 		setwd(file.path(repo.deb.path))
-		dpkg.scans.call <- paste(buildTools[["apt-ftparchive"]], " sources ", repo.src.real.rel.path, " > ", repo.src.pseudo.rel.path, "/Sources && \\\n",
+		dpkg.scans.call <- paste0(buildTools[["apt-ftparchive"]], " sources ", repo.src.real.rel.path, " > ", repo.src.pseudo.rel.path, "/Sources && \\\n",
 		"cat ", repo.src.pseudo.rel.path, "/Sources | gzip -9 > ", repo.src.pseudo.rel.path, "/Sources.gz && \\\n",
-		"cat ", repo.src.pseudo.rel.path, "/Sources | bzip2 -9 > ", repo.src.pseudo.rel.path, "/Sources.bz2", sep="")
+		"cat ", repo.src.pseudo.rel.path, "/Sources | bzip2 -9 > ", repo.src.pseudo.rel.path, "/Sources.bz2")
 		system(dpkg.scans.call, intern=TRUE)
 		setwd(prev.wd)
  	} else {}
 
 	if("bin" %in% actions){
 		prev.wd <- getwd()
-		dpkg.build.call <- paste(buildTools[["dpkg-buildpackage"]], " ", bin.opts, sep="")
-		dpkg.gench.call <- paste(buildTools[["dpkg-genchanges"]], " -b > ../", deb.pckg.name, "_", pck.version, "-", revision, "_", arch, ".changes", sep="")
-		setwd(file.path(build.dir, pck.src.folder.name))
+		dpkg.build.call <- paste0(buildTools[["dpkg-buildpackage"]], " ", bin.opts)
+		dpkg.gench.call <- paste0(buildTools[["dpkg-genchanges"]], " -b > ../", deb.pckg.name, "_", pck.version, "-", revision, "_", arch, ".changes")
+		bin.build.dir <- file.path(build.dir, pck.src.folder.name)
+		setwd(bin.build.dir)
+		# work around probably buggy r-cran.mk by creating a symlink
+		if(!identical(deb.pckg.name.lower, deb.pckg.name)){
+			setwd(file.path(bin.build.dir, "debian"))
+			system(paste0("ln -s ", deb.pckg.name, " ", deb.pckg.name.lower), intern=TRUE)
+			setwd(bin.build.dir)
+			message("deb: created workaround symlink for r-cran.mk.")
+		} else {}
 		system(dpkg.build.call, intern=TRUE)
 		system(dpkg.gench.call, intern=TRUE)
 		# copy built files
@@ -462,9 +494,9 @@ debianize <- function(
 		message("deb: copied *.changes and *.deb files to debian binary repository.")
 		# update package information; paths must be relative to the debian repo root
 		setwd(file.path(repo.deb.path))
-		dpkg.scanp.call <- paste(buildTools[["apt-ftparchive"]], " packages ", repo.bin.rel.path, " > ", repo.bin.rel.path, "/Packages && \\\n",
+		dpkg.scanp.call <- paste0(buildTools[["apt-ftparchive"]], " packages ", repo.bin.rel.path, " > ", repo.bin.rel.path, "/Packages && \\\n",
 		"cat ", repo.bin.rel.path, "/Packages | gzip -9 > ", repo.bin.rel.path, "/Packages.gz && \\\n",
-		"cat ", repo.bin.rel.path, "/Packages | bzip2 -9 > ", repo.bin.rel.path, "/Packages.bz2", sep="")
+		"cat ", repo.bin.rel.path, "/Packages | bzip2 -9 > ", repo.bin.rel.path, "/Packages.bz2")
 		system(dpkg.scanp.call, intern=TRUE)
 		for (this.path in c(repo.arch.paths)){
 			repo.all.pckgs.files <- c("Packages", "Packages.gz", "Packages.bz2")
@@ -477,35 +509,35 @@ debianize <- function(
 	if(any(c("bin","src") %in% actions)){
 		prev.wd <- getwd()
 		setwd(file.path(repo.deb.path))
-		dpkg.relse.call <- paste(buildTools[["apt-ftparchive"]],
+		dpkg.relse.call <- paste0(buildTools[["apt-ftparchive"]],
 			# Origin, Label, Suite, Version, Codename, Date, Valid-Until, Architectures, Components, Description
 			"\\\n  -o=APT::FTPArchive::Release::Suite=\"", distribution, "\"",
 			"\\\n  -o=APT::FTPArchive::Release::Components=\"", component, "\"",
 			"\\\n  -o=APT::FTPArchive::Release::Architectures=\"i386 amd64 source\"",
-			"\\\n  release ", repo.release.path, " > ", repo.release.path, "/Release", sep="")
+			"\\\n  release ", repo.release.path, " > ", repo.release.path, "/Release")
 		system(dpkg.relse.call, intern=TRUE)
 		# sign release file
 		if(!is.null(gpg.key)){
 			# first check if the public key is already in the repository
 			# this could later be replaced by generating a keyring.deb package
 			if(!file_test("-f", repo.gpg.key.file) | "gpg.key" %in% overwrite){
-				gpg.copy.call <- paste(buildTools[["gpg"]], " --armor --output ", repo.gpg.key.file, " --export ", gpg.key,  sep="")
+				gpg.copy.call <- paste0(buildTools[["gpg"]], " --armor --output ", repo.gpg.key.file, " --export ", gpg.key)
 				system(gpg.copy.call, intern=TRUE)
-				message(paste("deb: updated GnuPG key file in repository: ", gpg.key, ".asc", sep=""))
+				message(paste0("deb: updated GnuPG key file in repository: ", gpg.key, ".asc"))
 			} else {}
 
 			# --no-tty --yes is mandatory, otherwise gpg will stop with an error
 			# because it will try to get password information from /dev/tty and/or
 			# ask if files should be re-signed
-			gpg.sign.call <- paste(buildTools[["gpg"]], " --no-tty --yes --default-key ", gpg.key, " -abs -o ", repo.release.path, "/Release.gpg ", repo.release.path, "/Release",  sep="")
+			gpg.sign.call <- paste0(buildTools[["gpg"]], " --no-tty --yes --default-key ", gpg.key, " -abs -o ", repo.release.path, "/Release.gpg ", repo.release.path, "/Release")
 			system(gpg.sign.call, intern=TRUE)
-			message(paste("deb: signed Release file with key ", gpg.key, ".", sep=""))
+			message(paste0("deb: signed Release file with key ", gpg.key, "."))
 		} else {}
 		setwd(prev.wd)
 	} else {}
 
 	if(isTRUE(keep.build)){
-		message(paste("deb: build files can be found under ", build.dir, ".", sep=""))
+		message(paste0("deb: build files can be found under ", build.dir, "."))
 		return(build.dir)
 	} else {
 		return(invisible(NULL))

@@ -33,7 +33,7 @@ roxy.description <- function(val, description, version=NULL, date=NULL, R.vers=N
 		if(is.null(R.vers) || isTRUE(R_system_version(R.vers) < "2.14")){
 			if(!"Author" %in% names(description)){
 				if(pck.contributor != "") {
-					description[["Author"]] <- paste(pck.author, ", with contributions from ", pck.contributor, sep="")
+					description[["Author"]] <- paste0(pck.author, ", with contributions from ", pck.contributor)
 				} else {
 					description[["Author"]] <- pck.author
 				}
@@ -47,7 +47,7 @@ roxy.description <- function(val, description, version=NULL, date=NULL, R.vers=N
 
 	checkFor <- c("Version","Date","Depends","Enhances","Encoding","License","LazyLoad","URL")
 	desc.parts <- sapply(checkFor, function(this.entry){
-			found <- ifelse(this.entry %in% names(description), paste("\n#' ",this.entry,": \\tab ",description[[this.entry]],"\\cr", sep=""),"")
+			found <- ifelse(this.entry %in% names(description), paste0("\n#' ",this.entry,": \\tab ",description[[this.entry]],"\\cr"),"")
 			found <- gsub("^[[:space:]]*#'[[:space:]]*$", ".\n", found)
 			return(found)
 		})
@@ -62,7 +62,7 @@ roxy.description <- function(val, description, version=NULL, date=NULL, R.vers=N
 		pck.type <- "Package"
 	}
 
-	pckg.package.v <- paste(
+	pckg.package.v <- paste0(
 			"#' ",description[["Title"]],".\n#'\n#' \\tabular{ll}{",
 			"\n#' Package: \\tab ",description[["Package"]],"\\cr",
 			"\n#' Type: \\tab ",pck.type,"\\cr",
@@ -75,8 +75,7 @@ roxy.description <- function(val, description, version=NULL, date=NULL, R.vers=N
 			"\n#' @title The ",description[["Package"]]," Package",
 			"\n#' @author ",pck.author.clean,
 			"\n#' @keywords package",
-			"\nNULL\n",
-			sep="")
+			"\nNULL\n")
 	if(identical(val, "pckg.description")){
 		return(pckg.package.v)
 	} else {}

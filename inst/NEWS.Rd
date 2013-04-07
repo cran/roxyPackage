@@ -1,6 +1,64 @@
 \name{NEWS}
 \title{News for Package 'roxyPackage'}
 \encoding{UTF-8}
+\section{Changes in roxyPackage version 0.03-6 (2013-04-07)}{
+  \subsection{added}{
+    \itemize{
+      \item \code{debianize()} now supports both strict package names according to the
+        Debain R Policy as well as package names with a dot, whichever is expected by
+        your r-cran.mk file. Ignoring the policy is the default, as that is the
+        de-facto standard.
+    }
+  }
+}
+\section{Changes in roxyPackage version 0.03-5 (2013-03-30)}{
+  \subsection{fixed}{
+    \itemize{
+      \item .\code{find.package()} will soon be removed from R, replaced it with
+        \code{find.package()} for R >= 2.13
+    }
+  }
+}
+\section{Changes in roxyPackage version 0.03-4 (2013-03-12)}{
+  \subsection{changed}{
+    \itemize{
+      \item internally replaced paste(..., sep=\code{""}) with paste0(...), and added a
+        version dependent wrapper for compatibility with R < 2.15
+    }
+  }
+  \subsection{added}{
+    \itemize{
+      \item AGPL and Artistic License 2.0 have been added to the common licenses
+    }
+  }
+  \subsection{fixed}{
+    \itemize{
+      \item license files are now called LICENSE.txt; this is to prevent their
+        installation, as suggested by 'Writing R Extensions'
+    }
+  }
+}
+\section{Changes in roxyPackage version 0.03-3 (2013-02-13)}{
+  \subsection{added}{
+    \itemize{
+      \item extended sandboxing possibilities to \code{archive.packages()} and \code{debianize()}
+    }
+  }
+  \subsection{changed}{
+    \itemize{
+      \item \code{sandbox()} will now remove all paths set if \code{"active"} is FALSE
+    }
+  }
+}
+\section{Changes in roxyPackage version 0.03-2 (2013-02-11)}{
+  \subsection{added}{
+    \itemize{
+      \item new sandbox feature, see ?\code{sandbox()} and ?\code{sandbox.status()}. this needs
+        testing, and future releases will get support for this in all relevant
+        functions, not just \code{roxy.package()}, as it is now.
+    }
+  }
+}
 \section{Changes in roxyPackage version 0.03-1 (2013-01-29)}{
   \subsection{changed}{
     \itemize{

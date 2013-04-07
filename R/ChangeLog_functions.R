@@ -45,7 +45,7 @@ readChangeLog <- function(file, head="ChangeLog for package", change="changes in
 #' @export
 #' @rdname readChangeLog
 writeChangeLog <- function(log, file=NULL, head="ChangeLog for package", change="changes in version", item="  -", lineEnd=78){
-	breakBy <- paste("\n", paste(rep(" ", nchar(item) + 1), collapse="", sep=""), sep="")
+	breakBy <- paste0("\n", paste0(rep(" ", nchar(item) + 1), collapse=""))
 	logObject <- pasteChangeLog(log=log, file=file, head=head, change=change, item=item, lineEnd=lineEnd, breakAt=c(" "), breakBy=breakBy)
 	return(logObject)
 }
